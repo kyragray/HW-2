@@ -13,6 +13,8 @@ output:
 library(ggplot2)
 library(dplyr)
 library(readr) 
+library(forcats)
+library(knitr)
 ```
 
 
@@ -29,11 +31,11 @@ profiles <- read_csv(file="profiles.csv")
 
 Please indicate
 
-* Who you collaborated with:
-* Roughly how much time you spent on this HW so far:
-* The URL of the RPubs published URL [here](https://www.nhl.com/).
-* What gave you the most trouble:
-* Any comments you have:
+* Who you collaborated with: Amanda Hotvedt, Katherine Hobbs
+* Roughly how much time you spent on this HW so far: 8 hours 
+* The URL of the RPubs published URL [here](http://rpubs.com/kyragray/215359).
+* What gave you the most trouble: Having a hard time using the forcats package to reorder the jobs by the highest count to make the plot look less intimidating. How would I go about removing any location that don't have california after the comma in each cell, in addition I wold love any recomendations for removing all locations that are still in California but not in the San Francisco Bay Area. For the knitr::kable table output, I need to figure out to use the descending function because when I try to do it I get an error message despite using the same code that we learned in class. 
+* Any comments you have: This is a first attempt, I wanted to first look at the each variable (income, location, job, age) in isolation with sex but I intend to look further at the relationship between those variables as well and have attempted to do so at the of this exploration with age and income. 
 
 
 
@@ -44,17 +46,238 @@ specifically on the relationship between gender and
 
 * `income`
 * `job`
-* One more categorical variable of your choice
+* `location`
 
 all keeping in mind in HW-3, you will be fitting a logistic regression to
 predict a user's gender based on these variables.
 
+
+PROFILES
 ```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+profiles_no_essay <- profiles %>% 
+  select(-essay0, -essay1, -essay2, -essay3, -essay4, -essay5, -essay6, -essay7, -essay8, -essay9)
 
 ```
 
 
+INCOME
 
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+income <- profiles %>% 
+  select(sex, income) %>% 
+  group_by(sex)
+
+  summarize(income, 
+    income = mean(income, na.rm=TRUE))
+```
+
+The mean income for females is 11,181.70 and for males is 25,991.31. However, inherent issues arise when you ask someone to self report their income, particularly on a dating website where the implicit goal is to find someone to date. Therefore, people may not report their income for privacy reasons or to embelish their income to seem more attractive to potential matches on the website. 
+
+
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+income_tally <- income %>% 
+  group_by(income) %>% 
+  tally()
+
+income_tally_sex <- income %>% 
+  group_by(income, sex) %>% 
+  tally()
+
+ggplot(data=income_tally, aes(x=income, y=n)) +
+  geom_bar(stat="identity") +
+  labs(x="Income", y="Number of Profiles", title="Income Distribution of OkCupid San Francisco Bay Area Users")
+```
+
+Out of 59,946 individual profiles in the data set, 48,442 report having an income of -1, which means that aprroximately 81% of the data set did not report their actual income on their OkCupid profile.
+
+
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+ggplot(data=income_tally_sex, aes(x=income, y=n, fill=sex)) +
+  geom_bar(stat="identity", position="dodge") +
+  labs(x="Income", y="Number of Profiles", title="Income Distribution of OkCupid San Francisco Bay Area Users")
+
+ggplot(data=income, aes(x=income)) +
+  geom_histogram(binwidth=5000) +
+  facet_wrap(~sex) + 
+  labs(x="Income", y="Number of Profiles", title="Income Distribution of OkCupid San Francisco Bay Area Users")
+```
+
+Out of the 48442 total who reported their income to be -1, 27438 were male and 21004 were female. The income distributions of both sexes look fairly similar, as both are very right-skewed. 
+
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+income_f <- income_tally_sex %>% 
+  filter(sex=="f") %>% 
+  mutate(prop=n/24117)
+
+income_m <- income_tally_sex %>% 
+  filter(sex=="m") %>% 
+  mutate(prop=n/35829 )
+
+ggplot(data=income_f, aes(x=income, y=prop)) +
+  geom_bar(stat="identity") +
+  labs(x="Income", y="Proportion of Females", title=" Income Distribution of Female OkCupid San Francisco Bay Area Users")
+
+ggplot(data=income_m, aes(x=income, y=prop)) +
+  geom_bar(stat="identity") +
+  labs(x="Income", y="Proportion of Males", title=" Income Distribution of Male OkCupid San Francisco Bay Area Users")
+```
+Despite the fact that a larger sheer number of males reported having an income of -1, a greater proportion of females reported having an income of -1. As we can see in the plot above 87% of females reported having an income of -1, while 76% of males did so. This may indicate that women are less likely to feel comfortable reporting their actual income. 
+
+Now just for the sake of curiosity, let's see what the distribution of income would look like if we remove all the profiles who reported having an income of -1. I will call this "Actual" Income. 
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+income_actual <- income %>% 
+  filter(income>-1)
+
+summarize(income_actual, 
+    income = median(income, na.rm=TRUE))
+
+summarize(income_actual, 
+    income = mean(income, na.rm=TRUE))
+```
+In order to determine whether or not the mean and median values are realistic, I looked up the actual values in San Francisco in 2012 [source here](http://www.deptofnumbers.com/income/california/san-francisco/#household). According to the American Community Survey (ACS) Census data, the median household income in SF in 2012 was 74,922. I felt like household income was more relevant that family income because household income includes individuals living alone which I believe more likely applies to people who are using a dating website. This values compares to the female median income of 40,000 and male median income of 60,000. The per capita income for SF in 2012 was 40,522 which compares to the female mean income of 86,633 and 110,984. So the median values in the data set are less than the actual SF value while the mean values are highers than the actual SF value. This could mean that while more profiles are lowballing their income on their profile, there are enough people who are grossly overexaggerating their income to bring the data set's mean above the actual value (e.g. there are 7 individual who claim to be unemployed but also earning an income of 1 million dollars). 
+
+
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+ggplot(data=income_actual, aes(x=income)) +
+  geom_histogram(binwidth=10000)
+  labs(x="'Actual' Income", y="Proportion of Profiles", title=" 'Actual' Income Distribution of OkCupid San Francisco Bay Area Users")
+
+ggplot(data=income_actual, aes(x=income)) +
+  geom_histogram(binwidth=10000) +
+  facet_wrap(~sex) +
+  labs(x="Income", y="Proportion of Profiles", title=" Income Distribution of  OkCupid San Francisco Bay Area Users Faceted by Sex")
+
+ggplot(data=income_actual, aes(x=income, fill=sex)) +
+  geom_histogram(binwidth=10000, position="dodge") +
+  labs(x="Income", y="Proportion of Profiles", title=" Income Distribution of OkCupid San Francisco Bay Area Users Compared by Sex")
+```
+
+
+
+JOB
+
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+job <- profiles %>% 
+  select(sex, job) %>% 
+  group_by(sex, job) %>% 
+  tally()
+
+ggplot(data=job, aes(x=job, y=n, fill=sex)) +
+  geom_bar(stat="identity", position="dodge") +
+  labs(x="Job Type", y="Number of Profiles", title="SF OkCupid Job Type Distribution Compared by Sex")
+
+
+ggplot(data=job, aes(x=job, y=n, col=job, fct_reoder(job, n))) +
+  geom_bar(stat="identity") +
+  facet_wrap(~sex) +
+  theme(axis.text.x = element_blank()) +
+  labs(x="Job Type", y="Number of Profiles", title="SF OkCupid Job Type Distribution Faceted by Sex")
+  
+```
+Now obviously these plots are pretty unwieldy and difficult to interpret due to the number of different jobs. So I tried to gain a better understand of which jobs are most prevelant for females and for males. 
+
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+job_f <- job %>% 
+  filter(sex=="f") %>% 
+  mutate(prop=n/24117) 
+  
+job_f_top8 <- job_f %>% 
+filter(n>1015) 
+
+job_f_top8 %>% 
+  knitr::kable()
+
+job_m <- job %>% 
+  filter(sex=="m") %>% 
+  mutate(prop=n/35829)
+
+job_m_top8 <- job_m %>% 
+  filter(n>1617) 
+
+job_m_top8 %>% 
+  knitr::kable()
+  
+```
+
+Both sexes have "N/A"" and "Other"" in their top eight job types, further illustrating the point that people prefer to remain fairly private/vague on their profiles. However, men do this less so than women because computer/hardware/software is second highest job for men whereas for women N/A and other are first and second.
+
+LOCATION 
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+location <- profiles %>% 
+  select(sex, location) %>% 
+  group_by(sex, location) %>% 
+  tally()
+
+location_f <- location %>% 
+  filter(sex=="f") %>% 
+  mutate(prop=n/24117)
+
+location_f_top8 <- location_f %>% 
+  filter(n>268) 
+
+location_f_top8 %>% 
+  knitr::kable()
+
+location_m <- location %>% 
+  filter(sex=="m") %>% 
+  mutate(prop=n/35829)
+
+location_m_top8 <- location_m %>% 
+  filter(n>490) 
+
+location_m_top8 %>% 
+  knitr::kable()
+
+```
+After tallying, I realized that some of locations that profiles report are not in the San Francisco Bay Area, let alone in California. However out of the top 8 locations for each sex, the top 6 out in the exact same order of number of profiles per city. I chose not to display a plot here because I thought it would be even moreunwieldy as the job type plot given how many locations were reported by users. 
+
+
+AGE
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+age <- profiles %>% 
+  select(sex, age) %>% 
+  group_by(sex, age) %>% 
+  tally()
+summarize(age, 
+    age = mean(age, na.rm=TRUE))
+summarize(age, 
+    age = median(age, na.rm=TRUE))
+
+ggplot(data=age, aes(x=age, y=n, col=sex)) +
+  geom_bar(stat="identity", position="dodge") +
+  labs(x="Age in Years", y="Number of Profiles", title="SF OkCupid Age Distribution Compared by Sex")
+
+age_f <- age %>% 
+  filter(sex=="f") %>% 
+  mutate(prop=n/24117)
+
+age_m <- age %>% 
+  filter(sex=="m") %>% 
+  mutate(prop=n/35829 )
+
+```
+The age distribution of SF OkCupid users is similar between the sexes, both are skewed right, with similar ranges and the age with the highest proportion of users peaking under 30 years old. However, the female distribution appears to be slightly more right skewed than the male population. 
+
+AGE AND INCOME
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+age_income <- profiles %>% 
+  select(sex, income, age) %>% 
+  filter(income>-1) %>% 
+  group_by(age, sex) %>% 
+  summarise(avg_income=mean(income))
+
+ggplot(data=age_income, aes(x=age, y=avg_income, col=sex)) +
+  geom_point() +
+  labs(x="Age", y="Income", title="Relationship between Age and Income for SF OkCupid Users, Compared by Sex")
+
+ggplot(data=age_income, aes(x=age, y=avg_income)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~sex) +
+  labs(x="Age", y="Income", title="Relationship between Age and Income for SF OkCupid Users, Faceted by Sex")
+
+```
+The relationship between age and income is similar between males and females, both with income peaking around the age of 35. However, females income drops more dramatically after the age of 35 than males income. Additionally the entire female income vs age relationship is (unsurprisingly, yet disapointingly given the wage gap) shifted down about 25,000 dollars at the peak. The male starting income, under the age of 20, starts out higher than the females and similarly the male ending income, around the age of 70, is higher than the females. 
 ## Question 2:
 
 In the file `HW-2_Shiny_App.Rmd`, build the Shiny App discussed in Lec09 on
