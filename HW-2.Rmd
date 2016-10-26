@@ -32,7 +32,7 @@ profiles <- read_csv(file="profiles.csv")
 Please indicate
 
 * Who you collaborated with: Amanda Hotvedt, Katherine Hobbs
-* Roughly how much time you spent on this HW so far: 8 hours 
+* Roughly how much time you spent on this HW so far: 9 hours 
 * The URL of the RPubs published URL [here](http://rpubs.com/kyragray/215359).
 * What gave you the most trouble: Having a hard time using the forcats package to reorder the jobs by the highest count to make the plot look less intimidating. How would I go about removing any location that don't have california after the comma in each cell, in addition I wold love any recomendations for removing all locations that are still in California but not in the San Francisco Bay Area. For the knitr::kable table output, I need to figure out to use the descending function because when I try to do it I get an error message despite using the same code that we learned in class. 
 * Any comments you have: This is a first attempt, I wanted to first look at the each variable (income, location, job, age) in isolation with sex but I intend to look further at the relationship between those variables as well and have attempted to do so at the of this exploration with age and income. 
@@ -140,34 +140,64 @@ In order to determine whether or not the mean and median values are realistic, I
 ```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
 ggplot(data=income_actual, aes(x=income)) +
   geom_histogram(binwidth=10000)
-  labs(x="'Actual' Income", y="Proportion of Profiles", title=" 'Actual' Income Distribution of OkCupid San Francisco Bay Area Users")
+  labs(x="'Actual' Income", y="Number of Profiles", title=" 'Actual' Income Distribution of OkCupid San Francisco Bay Area Users")
 
 ggplot(data=income_actual, aes(x=income)) +
   geom_histogram(binwidth=10000) +
   facet_wrap(~sex) +
-  labs(x="Income", y="Proportion of Profiles", title=" Income Distribution of  OkCupid San Francisco Bay Area Users Faceted by Sex")
+  labs(x="Income", y="Number of Profiles", title=" Income Distribution of  OkCupid San Francisco Bay Area Users Faceted by Sex")
 
 ggplot(data=income_actual, aes(x=income, fill=sex)) +
   geom_histogram(binwidth=10000, position="dodge") +
-  labs(x="Income", y="Proportion of Profiles", title=" Income Distribution of OkCupid San Francisco Bay Area Users Compared by Sex")
+  labs(x="Income", y="Number of Profiles", title=" Income Distribution of OkCupid San Francisco Bay Area Users Compared by Sex")
 ```
 
+Making Income a Categorical Variable: 
+no_response: people who responded -1 
+low_income: people who make 30,000 or less 
+middle income: people who make between 30,000 and 70,000
+high_income: people who make over 70,000 
 
+```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
+
+income_levels <- income %>% 
+mutate(income_level = 
+  ifelse(income %in% -2:0, "No Response",
+  ifelse(income %in% 0:20000, "Low Income",
+  ifelse(income %in% 20001:70000, "Middle Income",
+  ifelse(income %in% 70000:1000000, "High Income", " "))))) %>% 
+  group_by(income_level, sex) %>% 
+  tally() %>% 
+  group_by(income_level) %>% 
+  mutate(prop=n/sum(n))
+
+ggplot(data=income_levels, aes(x=income_level, y=prop, fill=sex))+
+  geom_bar(stat="identity", position="dodge") 
+
+```
 
 JOB
-
 ```{r, echo=TRUE, message=TRUE, warning=TRUE, fig.width=8, fig.height=4.5}
 job <- profiles %>% 
   select(sex, job) %>% 
-  group_by(sex, job) %>% 
-  tally()
+  group_by(job,sex) %>% 
+  tally() %>% 
+  group_by(job) %>% 
+  mutate(prop=n/sum(n))
+
+ggplot(data=job, aes(x=job, y=prop, fill=sex)) +
+  geom_bar(stat="identity", position="dodge") +
+  labs(x="Job Type", y="Number of Profiles", title="SF OkCupid Job Type Distribution Compared by Sex") +
+  geom_hline(yintercept = 0.40) + 
+  coord_flip()
 
 ggplot(data=job, aes(x=job, y=n, fill=sex)) +
   geom_bar(stat="identity", position="dodge") +
-  labs(x="Job Type", y="Number of Profiles", title="SF OkCupid Job Type Distribution Compared by Sex")
+  labs(x="Job Type", y="Number of Profiles", title="SF OkCupid Job Type Distribution Compared by Sex") +
+  coord_flip()
 
 
-ggplot(data=job, aes(x=job, y=n, col=job, fct_reoder(job, n))) +
+ggplot(data=job, aes(x=job, y=n, fill=job, fct_reoder(job, n))) +
   geom_bar(stat="identity") +
   facet_wrap(~sex) +
   theme(axis.text.x = element_blank()) +
@@ -206,7 +236,9 @@ LOCATION
 location <- profiles %>% 
   select(sex, location) %>% 
   group_by(sex, location) %>% 
-  tally()
+  tally() %>% 
+  group_by(location) %>% 
+  mutate(prop=n/sum(n))
 
 location_f <- location %>% 
   filter(sex=="f") %>% 
@@ -237,10 +269,25 @@ AGE
 age <- profiles %>% 
   select(sex, age) %>% 
   group_by(sex, age) %>% 
+  tally() %>% 
+  group_by(age) %>% 
+  mutate(prop=n/sum(n))
+
+ggplot(data=age, aes(x=age, y=prop, fill=sex)) +
+  geom_bar(stat="identity", position="dodge") +
+  labs(x="Job Type", y="Number of Profiles", title="SF OkCupid Job Type Distribution Compared by Sex") +
+  geom_hline(yintercept = 0.40) + 
+  coord_flip()
+
+
+age_avg <- profiles %>% 
+  select(sex, age) %>% 
+  group_by(sex, age) %>% 
   tally()
-summarize(age, 
+
+summarize(age_avg, 
     age = mean(age, na.rm=TRUE))
-summarize(age, 
+summarize(age_avg, 
     age = median(age, na.rm=TRUE))
 
 ggplot(data=age, aes(x=age, y=n, col=sex)) +

@@ -38,7 +38,8 @@ movies2 <- movies %>%
 ggplot(data=movies2, aes(x=budget, y=rating)) +
   geom_point() +
   geom_smooth() +
-  labs(x="Movie Budget", y="Average Movie Rating", title="Relationship between Movie Budget and Movie Rating")
+  labs(x="Movie Budget", y="Average Movie Rating", title="Relationship between Movie Budget and Movie Rating") +
+  scale_x_log10()
 
 })
 ```
